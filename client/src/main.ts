@@ -1,4 +1,94 @@
 import './styles/jass.css';
+const API_KEY = "2acb865d0277a70b05b6fb061c040d21";
+const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+const FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast";
+
+async function getForecast(city: string) {
+  try {
+    console.log(`Fetching forecast for: ${city}`);
+    const response = await fetch(`${FORECAST_URL}?q=${city}&appid=${API_KEY}&units=metric`);
+    
+    // Log full response in console
+    console.log("Forecast API Response:", response);
+
+    if (!response.ok) throw new Error(`Forecast not found for: ${city}`);
+
+    const data = await response.json();
+    console.log("Forecast Data:", data);
+
+    const forecastContainer = document.getElementById("forecast")!;
+    forecastContainer.innerHTML = ""; // Clear previous forecast
+
+    // Loop through forecast (every 8th item = ~24 hours apart)
+    for (let i = 0; i < data.list.length; i += 8) {
+      const forecast = data.list[i];
+
+      // Format date
+      const date = new Date(forecast.dt * 1000).toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      });
+
+      // Create forecast card
+      const forecastCard = document.createElement("div");
+      forecastCard.classList.add("col-md-2", "text-center", "forecast-card");
+
+      forecastCard.innerHTML = `
+        <div class="card bg-light p-2">
+          <h5>${date}</h5>
+          <img src="https://openweathermap.org/img/wn/${forecast.weather[0].icon}.png" alt="${forecast.weather[0].description}" />
+          <p>${forecast.main.temp}°C</p>
+          <p>${forecast.weather[0].description}</p>
+          <p>Wind: ${forecast.wind.speed} m/s</p>
+          <p>Humidity: ${forecast.main.humidity}%</p>
+        </div>
+      `;
+
+      forecastContainer.appendChild(forecastCard);
+    }
+  } catch (error) {
+    console.error("Error fetching forecast:", error);
+  }
+}
+
+async function getWeather(city: string) {
+  try {
+    const response = await fetch(`${BASE_URL}?q=${city}&appid=${API_KEY}&units=metric`);
+    if (!response.ok) throw new Error("City not found");
+
+    const data = await response.json();
+    console.log("Weather Data:", data);
+
+    // Display current weather
+    const cityName = `${data.name}, ${data.sys.country}`;
+    document.getElementById("search-title")!.textContent = cityName;
+    document.getElementById("temp")!.textContent = `Temperature: ${data.main.temp}°C`;
+    document.getElementById("wind")!.textContent = `Wind Speed: ${data.wind.speed} m/s`;
+    document.getElementById("humidity")!.textContent = `Humidity: ${data.main.humidity}%`;
+
+    // Display weather icon
+    const weatherIcon = `https://openweathermap.org/img/wn/${data.weather[0].icon}.png`;
+    document.getElementById("weather-img")!.setAttribute("src", weatherIcon);
+    document.getElementById("weather-img")!.setAttribute("alt", data.weather[0].description);
+
+    // Call getForecast to display 5-day forecast
+    getForecast(city);
+  } catch (error) {
+    console.error("Error fetching weather:", error);
+    alert("City not found. Please try again.");
+  }
+}
+
+
+// Event Listener for Search Form
+document.getElementById("search-form")!.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const city = (document.getElementById("search-input") as HTMLInputElement).value.trim();
+  if (city) getWeather(city);
+});
+
+
 
 // * All necessary DOM elements selected
 const searchForm: HTMLFormElement = document.getElementById(
